@@ -1,0 +1,9 @@
+[project]
+name = "repotracker"
+version = "0.1.0"
+description = "Simple tracker for internal github projects."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ruff>=0.9.7",
+]

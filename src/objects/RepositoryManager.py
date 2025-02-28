@@ -12,21 +12,14 @@ class RepositoryManager(BaseModel):
     db_connection: sqlite3.Connection
     repository_list: list[git.Repo]
 
-    def __init__(self):
-        self.db_connection = self.get_connection()
-        self.repository_list = self.load_tracked_repos()
+    def __init__(self, db_file_path: str, repo_json_path: str):
+        self.db_connection = self.get_connection(db_file_path)
+        self.repository_list = self.load_tracked_repos(repo_json_path)
 
-    def get_connection(self) -> sqlite3.Connection:
-        """
-        Use the config.toml file to initialize the database connection.
-        """
-        with open("./config.toml", "rb") as config:
-            config = tomllib.load(config)
+    def get_connection(self, db_file_path: str) -> sqlite3.Connection:
+        return sqlite3.connect(db_file_path)
 
-        db_path: str = config["database"]["locale"]
-        return sqlite3.connect(db_path)
-
-    def load_tracked_repos(self) -> list[git.Repo]:
+    def load_tracked_repos(self, repo_json_path: str) -> list[git.Repo]:
         """
         Populate the repository_list and create new repository entries
         in the database if there are new repositories in the json list.
@@ -34,7 +27,7 @@ class RepositoryManager(BaseModel):
         repos: list[git.Repo] = []
 
         # First, we open our JSON list.
-        with open("./tracked_repos/tracked_repos.json") as dictionary:
+        with open(repo_json_path) as dictionary:
             data = json.load(dictionary)
 
         for repo in data["repositories"]:
@@ -220,4 +213,3 @@ class RepositoryManager(BaseModel):
             else:
                 break  # Stop iterating once we reach old commits
         return new_commits
-

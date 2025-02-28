@@ -2,7 +2,7 @@ import os
 import sqlite3
 import tomllib
 import json
-from git import Repo
+import git
 from database_orm import CommitOrm, RepositoryOrm
 from datetime import datetime
 from pydantic import BaseModel
@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 class RepositoryManager(BaseModel):
     db_connection: sqlite3.Connection
-    repository_list: list[Repo]
+    repository_list: list[git.Repo]
 
     def __init__(self):
         self.db_connection = self.get_connection()
@@ -26,8 +26,8 @@ class RepositoryManager(BaseModel):
         db_path: str = config["database"]["locale"]
         return sqlite3.connect(db_path)
 
-    def load_tracked_repos(self) -> list[Repo]:
-        repos: list[Repo] = []
+    def load_tracked_repos(self) -> list[git.Repo]:
+        repos: list[git.Repo] = []
 
         # First, we open our JSON list.
         with open("./tracked_repos/tracked_repos.json") as dictionary:
@@ -40,16 +40,16 @@ class RepositoryManager(BaseModel):
 
             # If this repo isn't downloaded yet, we should download it.
             if repo_name not in os.listdir("./tracked_repos"):
-                new_repo = Repo.clone_from(repo_url, repo_path, branch="main")
+                new_repo = git.Repo.clone_from(repo_url, repo_path, branch="main")
                 self._create_repo(new_repo)
 
             # We add the path to our repo to our list.
-            repos.append(Repo(repo_path))
+            repos.append(git.Repo(repo_path))
 
         # Finally, we return all our repos.
         return repos
 
-    def update_repository(self, repository: Repo):
+    def update_repository(self, repository: git.Repo):
         """
         Update the database with the latest branches and commits from the repository.
         """
@@ -58,7 +58,7 @@ class RepositoryManager(BaseModel):
         last_commit_date = self._get_last_commit_date(repo_name)
 
         # Fetch all branches in the repository
-        branches = repository.branches
+        branches : git.IterableList[git.Head] = repository.branches
 
         # Iterate over each branch and fetch new commits
         for branch in branches:
@@ -75,7 +75,7 @@ class RepositoryManager(BaseModel):
         # Update the repository's LastCommitDate in the database
         self._update_last_commit_date(repo_name, datetime.now())
 
-    def _create_repo(self, repo: Repo) -> RepositoryOrm:
+    def _create_repo(self, repo: git.Repo) -> RepositoryOrm:
         """
         Create a RepositoryOrm object from a git.Repo and insert it into the database.
         """
@@ -146,33 +146,6 @@ class RepositoryManager(BaseModel):
             self.db_connection.commit()
             return cursor.lastrowid  # Return new branch ID
 
-    def _get_new_commits(
-        self, repository: Repo, branch, last_commit_date: datetime
-    ) -> list[CommitOrm]:
-        """
-        Fetch new commits in the branch that are newer than last_commit_date.
-        """
-        new_commits = []
-        repo_name = os.path.basename(repository.working_dir)
-
-        for commit in repository.iter_commits(branch):
-            branch_name = branch.name
-
-            commit_date = datetime.fromtimestamp(commit.committed_date)
-            if commit_date > last_commit_date:
-                new_commits.append(
-                    CommitOrm(
-                        author_id=self._get_or_create_staff(commit.author.name),
-                        branch_id=self._get_or_create_branch(repo_name, branch_name),
-                        comment=commit.message,
-                        date=commit_date,
-                        file_changes=len(commit.stats.files),
-                    )
-                )
-            else:
-                break  # Stop iterating once we reach old commits
-        return new_commits
-
     def _insert_commit(self, branch_id: int | None, commit: CommitOrm):
         """
         Insert a commit into the database.
@@ -216,3 +189,30 @@ class RepositoryManager(BaseModel):
             cursor.execute("INSERT INTO staff (Name) VALUES (?)", (author_name,))
             self.db_connection.commit()
             return cursor.lastrowid  # Return new staff ID
+
+    def _get_new_commits(
+        self, repository: git.Repo, branch, last_commit_date: datetime
+    ) -> list[CommitOrm]:
+        """
+        Fetch new commits in the branch that are newer than last_commit_date.
+        """
+        new_commits = []
+        repo_name = os.path.basename(repository.working_dir)
+
+        for commit in repository.iter_commits(branch):
+            branch_name = branch.name
+
+            commit_date = datetime.fromtimestamp(commit.committed_date)
+            if commit_date > last_commit_date:
+                new_commits.append(
+                    CommitOrm(
+                        author_id=self._get_or_create_staff(commit.author.name),
+                        branch_id=self._get_or_create_branch(repo_name, branch_name),
+                        comment=commit.message,
+                        date=commit_date,
+                        file_changes=len(commit.stats.files),
+                    )
+                )
+            else:
+                break  # Stop iterating once we reach old commits
+        return new_commits

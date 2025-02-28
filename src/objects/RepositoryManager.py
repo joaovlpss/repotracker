@@ -27,6 +27,10 @@ class RepositoryManager(BaseModel):
         return sqlite3.connect(db_path)
 
     def load_tracked_repos(self) -> list[git.Repo]:
+        """
+        Populate the repository_list and create new repository entries
+        in the database if there are new repositories in the json list.
+        """
         repos: list[git.Repo] = []
 
         # First, we open our JSON list.
@@ -38,7 +42,7 @@ class RepositoryManager(BaseModel):
             repo_url = repo["ssh_url"]
             repo_path = "./tracked_repos" + repo_name
 
-            # If this repo isn't downloaded yet, we should download it.
+            # If this repo isn't downloaded yet, we should clone it.
             if repo_name not in os.listdir("./tracked_repos"):
                 new_repo = git.Repo.clone_from(repo_url, repo_path, branch="main")
                 self._create_repo(new_repo)
@@ -58,7 +62,7 @@ class RepositoryManager(BaseModel):
         last_commit_date = self._get_last_commit_date(repo_name)
 
         # Fetch all branches in the repository
-        branches : git.IterableList[git.Head] = repository.branches
+        branches: git.IterableList[git.Head] = repository.branches
 
         # Iterate over each branch and fetch new commits
         for branch in branches:
@@ -216,3 +220,4 @@ class RepositoryManager(BaseModel):
             else:
                 break  # Stop iterating once we reach old commits
         return new_commits
+

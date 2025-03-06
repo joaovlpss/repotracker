@@ -2,4 +2,5 @@
 config.toml
 tracked_repos.json
 database/database
-src/objects/__pycache__
+src/objects/__pycache__/*
+tracked_repos/

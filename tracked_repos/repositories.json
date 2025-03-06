@@ -1,0 +1,8 @@
+{
+  "repositories": [
+    {
+      "name": "repotracker",
+      "ssh_url": "git@github.com:joaovlpss/repotracker.git"
+    }
+  ]
+}

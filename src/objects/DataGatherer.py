@@ -2,13 +2,17 @@ import pandas as pd
 import sqlite3
 import tomllib
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class DataGatherer(BaseModel):
     db_connection: sqlite3.Connection
     dump_path: str
     query_result: pd.DataFrame
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )  # Allow arbitrary types for sqlite3 Connection.
 
     def __init__(self):
         self.db_connection = self.get_connection()

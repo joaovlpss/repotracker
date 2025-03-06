@@ -2,14 +2,18 @@ import os
 import sqlite3
 import json
 import git
-from database_orm import CommitOrm, RepositoryOrm
+from src.objects.database_orm import CommitOrm, RepositoryOrm
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class RepositoryManager(BaseModel):
     db_connection: sqlite3.Connection
     repository_list: list[git.Repo]
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )  # Allow arbitrary types for sqlite3 Connection.
 
     def __init__(self, db_file_path: str, repo_json_path: str):
         self.db_connection = self.get_connection(db_file_path)

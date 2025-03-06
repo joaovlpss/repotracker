@@ -1,6 +1,5 @@
 import os
 import sqlite3
-import tomllib
 import json
 import git
 from database_orm import CommitOrm, RepositoryOrm
@@ -55,7 +54,7 @@ class RepositoryManager(BaseModel):
         last_commit_date = self._get_last_commit_date(repo_name)
 
         # Fetch all branches in the repository
-        branches: git.IterableList[git.Head] = repository.branches
+        branches = repository.branches
 
         # Iterate over each branch and fetch new commits
         for branch in branches:

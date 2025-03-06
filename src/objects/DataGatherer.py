@@ -17,7 +17,7 @@ class DataGatherer:
         """
         cursor = self.db_connection.cursor()
         cursor.execute(
-            "SELECT AuthorID, BranchID, Comment, Date, FileChanges FROM commit"
+            "SELECT AuthorID, BranchID, Comment, Date, FileChanges FROM commits"
         )
 
         result = cursor.fetchall()

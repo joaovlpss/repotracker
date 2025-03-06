@@ -4,16 +4,11 @@ import json
 import git
 from src.objects.database_orm import CommitOrm, RepositoryOrm
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
 
 
-class RepositoryManager(BaseModel):
+class RepositoryManager:
     db_connection: sqlite3.Connection
     repository_list: list[git.Repo]
-
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True
-    )  # Allow arbitrary types for sqlite3 Connection.
 
     def __init__(self, db_file_path: str, repo_json_path: str):
         self.db_connection = self.get_connection(db_file_path)
@@ -36,7 +31,7 @@ class RepositoryManager(BaseModel):
         for repo in data["repositories"]:
             repo_name = repo["name"]
             repo_url = repo["ssh_url"]
-            repo_path = "./tracked_repos" + repo_name
+            repo_path = "./tracked_repos/" + repo_name
 
             # If this repo isn't downloaded yet, we should clone it.
             if repo_name not in os.listdir("./tracked_repos"):
@@ -152,7 +147,7 @@ class RepositoryManager(BaseModel):
         """
         cursor = self.db_connection.cursor()
         cursor.execute(
-            "INSERT INTO commit (AuthorID, BranchID, Comment, Date, FileChanges) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO commits (AuthorID, BranchID, Comment, Date, FileChanges) VALUES (?, ?, ?, ?, ?)",
             (
                 commit.author_id,
                 branch_id,

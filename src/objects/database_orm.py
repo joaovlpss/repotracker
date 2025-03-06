@@ -1,14 +1,13 @@
-from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Optional
 
 
-class StaffOrm(BaseModel):
+class StaffOrm:
     id: int
     name: str
 
 
-class CommitOrm(BaseModel):
+class CommitOrm:
     id: Optional[int] = None
     author_id: int
     branch_id: int
@@ -22,14 +21,14 @@ class CommitOrm(BaseModel):
         }
 
 
-class BranchOrm(BaseModel):
+class BranchOrm:
     id: Optional[int] = None
     name: str
     repo_id: int
     commits: List[CommitOrm] = []
 
 
-class RepositoryOrm(BaseModel):
+class RepositoryOrm:
     id: Optional[int] = None
     name: str
     author_id: int

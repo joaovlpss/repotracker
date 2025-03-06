@@ -21,7 +21,7 @@ CREATE TABLE branch (
 );
 
 -- Commit table
-CREATE TABLE commit (
+CREATE TABLE commits (
   ID INTEGER PRIMARY KEY,
   AuthorID INT NOT NULL REFERENCES staff(ID) ON DELETE CASCADE, 
   BranchID INT NOT NULL REFERENCES branch(ID) ON DELETE CASCADE,
@@ -40,14 +40,14 @@ CREATE TABLE staff_in_repo (
 -- Indexes for faster lookups
 CREATE INDEX idx_repository_AuthorID ON repository(AuthorID);
 CREATE INDEX idx_branch_RepoID ON branch(RepoID);
-CREATE INDEX idx_commit_BranchID ON commit(BranchID);
-CREATE INDEX idx_commit_AuthorID ON commit(AuthorID);
+CREATE INDEX idx_commit_BranchID ON commits(BranchID);
+CREATE INDEX idx_commit_AuthorID ON commits(AuthorID);
 CREATE INDEX idx_staff_in_repo_StaffID ON staff_in_repo(StaffID);
 CREATE INDEX idx_staff_in_repo_RepoID ON staff_in_repo(RepoID);
 
 -- Trigger to update LastCommitDate in repository when a new commit is added
 CREATE TRIGGER update_last_commit_date
-AFTER INSERT ON commit
+AFTER INSERT ON commits
 FOR EACH ROW
 BEGIN
   -- Update the LastCommitDate in the repository table

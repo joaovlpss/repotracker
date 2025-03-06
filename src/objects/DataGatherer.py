@@ -16,14 +16,25 @@ class DataGatherer:
         Dump all commits data into a .csv file.
         """
         cursor = self.db_connection.cursor()
+
         cursor.execute(
-            "SELECT AuthorID, BranchID, Comment, Date, FileChanges FROM commits"
+            """
+            SELECT 
+                s.Name AS AuthorName, 
+                b.Name AS BranchName, 
+                c.Comment, 
+                c.Date, 
+                c.FileChanges
+            FROM commits c
+            JOIN staff s ON c.AuthorID = s.ID
+            JOIN branch b ON c.BranchID = b.ID
+            """
         )
 
         result = cursor.fetchall()
 
         result_df = pd.DataFrame(
-            result, columns=["AuthorID", "BranchID", "Comment", "Date", "FileChanges"]
+            result, columns=["Author", "Branch", "Comment", "Date", "FileChanges"]
         )
 
         file_path = self.dump_path + "/" + file_name

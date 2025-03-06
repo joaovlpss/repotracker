@@ -2,5 +2,9 @@
 config.toml
 tracked_repos.json
 database/database
-src/objects/__pycache__/*
 tracked_repos/
+dump/
+
+# Files created by python
+src/objects/__pycache__/*
+__pycache__

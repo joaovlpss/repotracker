@@ -1,4 +1,5 @@
 # Internal specific files.
 config.toml
 tracked_repos.json
-database/database.sqlite3
+database/database
+src/objects/__pycache__

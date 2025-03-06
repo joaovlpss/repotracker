@@ -1,3 +1,4 @@
 # Internal specific files.
 config.toml
 tracked_repos.json
+database/database.sqlite3

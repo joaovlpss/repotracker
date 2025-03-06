@@ -1,8 +1,7 @@
-
 -- Staff table
 CREATE TABLE staff (
   ID INTEGER PRIMARY KEY,
-  Name TEXT NOT NULL UNIQUE 
+  Name TEXT NOT NULL UNIQUE
 );
 
 -- Repository table

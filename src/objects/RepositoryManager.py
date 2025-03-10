@@ -38,8 +38,11 @@ class RepositoryManager:
                 new_repo = git.Repo.clone_from(repo_url, repo_path, branch="main")
                 self._create_repo(new_repo)
 
-            # We add the path to our repo to our list.
-            repos.append(git.Repo(repo_path))
+            # We add the path to our repo to our list and update it.
+            repo = git.Repo(repo_path)
+            repo_origin = repo.remotes.origin
+            repo_origin.pull()
+            repos.append(repo)
 
         # Finally, we return all our repos.
         return repos
@@ -198,7 +201,15 @@ class RepositoryManager:
             branch_name = branch.name
 
             commit_date = datetime.fromtimestamp(commit.committed_date)
-            if commit_date > last_commit_date:
+
+            print(
+                str(commit_date)
+                + " is the commit date for commit "
+                + str(commit.message)
+            )
+            print(str(last_commit_date) + " is the last commit date.")
+
+            if commit_date >= last_commit_date:
                 new_commits.append(
                     CommitOrm(
                         author_id=self._get_or_create_staff(commit.author.name),

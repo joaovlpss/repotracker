@@ -21,20 +21,30 @@ class DataGatherer:
             """
             SELECT 
                 s.Name AS AuthorName, 
-                b.Name AS BranchName, 
+                b.Name AS BranchName,
+                r.Name AS RepositoryName,
                 c.Comment, 
                 c.Date, 
                 c.FileChanges
             FROM commits c
             JOIN staff s ON c.AuthorID = s.ID
             JOIN branch b ON c.BranchID = b.ID
+            JOIN repository r ON b.RepoID = r.ID
             """
         )
 
         result = cursor.fetchall()
 
         result_df = pd.DataFrame(
-            result, columns=["Author", "Branch", "Comment", "Date", "FileChanges"]
+            result,
+            columns=[
+                "Author",
+                "Branch",
+                "Repository",
+                "Comment",
+                "Date",
+                "FileChanges",
+            ],
         )
 
         file_path = self.dump_path + "/" + file_name

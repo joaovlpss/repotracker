@@ -6,4 +6,4 @@ tracked_repos/
 dump/
 
 # Files created by python
-__pycache__/*
+__pycache__/

@@ -35,14 +35,16 @@ locale= "./tracked_repos/repositories.json"
   It should have a field for the name, and another for the SSH connection
   link:
 
-```{
+```
+{
   "repositories": [
     {
       "name": "repotracker",
       "ssh_url": "git@github.com:joaovlpss/repotracker.git"
     }
   ]
-}```
+}
+```
 
   7. Copy the database schema from repodb_schema.sql into your SQLite3
   database.

@@ -45,3 +45,6 @@ uv.lock
 
 # Alembic file generated on upgrade/revision
 *.pyc
+
+# Docker compose file
+docker-compose.yml

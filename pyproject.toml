@@ -5,8 +5,12 @@ description = "Simple tracker for internal github projects."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.15.2",
     "gitpython>=3.1.44",
+    "httpx>=0.28.1",
     "pandas>=2.2.3",
     "pydantic>=2.10.6",
+    "python-dotenv>=1.1.0",
     "ruff>=0.9.7",
+    "sqlalchemy>=2.0.40",
 ]

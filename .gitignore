@@ -1,9 +1,47 @@
-# Internal specific files.
-config.toml
-tracked_repos.json
-database/database
-tracked_repos/
-dump/
-
-# Files created by python
+# Byte-compiled / optimized / DLL files
 __pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environments
+.env
+.venv
+env.bak
+venv.bak
+
+# IDE Directories
+.vscode/
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Temporary Files
+*.tmp
+*~
+
+# uv lock file
+uv.lock 
+
+# Alembic file generated on upgrade/revision
+*.pyc

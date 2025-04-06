@@ -2,7 +2,6 @@ import datetime
 from typing import List, Optional, Set
 
 from sqlalchemy import (
-    create_engine,
     Table,
     Column,
     CheckConstraint,
@@ -208,3 +207,166 @@ class Commit(Base):
 
     def __repr__(self) -> str:
         return f"<Commit(id={self.id}, author_id={self.author_id}, branch_id={self.branch_id}, date='{self.date}')>"
+
+
+class Milestone(Base):
+    __tablename__ = "milestones"
+
+    id: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
+    repo_id: Mapped[int] = mapped_column(
+        "RepoID", ForeignKey("repository.id", ondelete="CASCADE"), nullable=False
+    )
+    number: Mapped[int] = mapped_column(
+        "Number", Integer, nullable=False
+    )  # GitHub milestone ID for the repo
+    title: Mapped[str] = mapped_column("Title", Text, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(
+        "Description", Text, nullable=True
+    )
+    state: Mapped[str] = mapped_column("State", String, nullable=False, default="open")
+    due_date: Mapped[Optional[datetime.date]] = mapped_column(
+        "DueDate", DateTime, nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        "CreatedAt", DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    closed_at: Mapped[Optional[datetime.datetime]] = mapped_column(
+        "ClosedAt", DateTime(timezone=True), nullable=True
+    )
+
+    # Relationships
+    # A milestone can have many issues
+    repo: Mapped["Repository"] = relationship(back_populates="milestones")
+    issues: Mapped[List["Issue"]] = relationship(back_populates="milestone")
+
+    # A milestone may only have one id.
+    # It should also be either open or closed (we won't treat other states for now)
+    __table_args__ = (
+        UniqueConstraint("RepoID", "Number", name="uq_milestone_repo_number"),
+        CheckConstraint(
+            "\"State\" IN ('open', 'closed')", name="check_milestone_state"
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Milestone(id={self.id}, repo_id={self.repo_id}, number={self.number}, title='{self.title[:20]}...')>"
+
+
+class Label(Base):
+    __tablename__ = "labels"
+
+    id: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
+    repo_id: Mapped[int] = mapped_column(
+        "RepoID", ForeignKey("repository.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column("Name", String, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(
+        "Description", Text, nullable=True
+    )
+    color: Mapped[Optional[str]] = mapped_column(
+        "Color", String(6), nullable=True
+    )  # e.g., 'FF0000'
+
+    # Relationships
+
+    # A label is associated with its repo
+    repo: Mapped["Repository"] = relationship(back_populates="labels")
+
+    # And it may be present in many issues.
+    issues: Mapped[List["Issue"]] = relationship(
+        secondary=issue_labels_table, back_populates="labels"
+    )
+
+    # Every label name in a repo must be unique.
+    __table_args__ = (UniqueConstraint("RepoID", "Name", name="uq_label_repo_name"),)
+
+    def __repr__(self) -> str:
+        return f"<Label(id={self.id}, repo_id={self.repo_id}, name='{self.name}')>"
+
+
+class Issue(Base):
+    __tablename__ = "issues"
+
+    id: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
+    repo_id: Mapped[int] = mapped_column(
+        "RepoID", ForeignKey("repository.id", ondelete="CASCADE"), nullable=False
+    )
+    # Using Optional[] for nullable foreign keys, as an issue may not be associated with any Milestone
+    milestone_id: Mapped[Optional[int]] = mapped_column(
+        "MilestoneID", ForeignKey("milestones.id", ondelete="SET NULL"), nullable=True
+    )
+    number: Mapped[int] = mapped_column(
+        "Number", Integer, nullable=False
+    )  # GitHub issue number for the repo
+    title: Mapped[str] = mapped_column("Title", Text, nullable=False)
+    body: Mapped[Optional[str]] = mapped_column("Body", Text, nullable=True)
+    state: Mapped[str] = mapped_column("State", String, nullable=False, default="open")
+    # Assuming issues always have an author
+    author_id: Mapped[int] = mapped_column(
+        "AuthorID", ForeignKey("staff.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        "CreatedAt", DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        "UpdatedAt", DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    closed_at: Mapped[Optional[datetime.datetime]] = mapped_column(
+        "ClosedAt", DateTime(timezone=True), nullable=True
+    )
+
+    # Relationships
+
+    repo: Mapped["Repository"] = relationship(back_populates="issues")
+    milestone: Mapped[Optional["Milestone"]] = relationship(back_populates="issues")
+    # And has one author
+    author: Mapped["Staff"] = relationship(back_populates="authored_issues")
+
+    # But many assignees (potentially), labels and comments.
+    assignees: Mapped[List["Staff"]] = relationship(
+        secondary=issue_assignees_table, back_populates="assigned_issues"
+    )
+    labels: Mapped[List["Label"]] = relationship(
+        secondary=issue_labels_table, back_populates="issues"
+    )
+    comments: Mapped[List["IssueComment"]] = relationship(
+        back_populates="issue", cascade="all, delete-orphan"
+    )
+
+    # Sane constraints for uniqueness and state consistency
+    __table_args__ = (
+        UniqueConstraint("RepoID", "Number", name="uq_issue_repo_number"),
+        CheckConstraint("\"State\" IN ('open', 'closed')", name="check_issue_state"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Issue(id={self.id}, repo_id={self.repo_id}, number={self.number}, title='{self.title[:20]}...')>"
+
+
+class IssueComment(Base):
+    __tablename__ = "issue_comments"
+
+    id: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
+    issue_id: Mapped[int] = mapped_column(
+        "IssueID", ForeignKey("issues.id", ondelete="CASCADE"), nullable=False
+    )
+    author_id: Mapped[int] = mapped_column(
+        "AuthorID", ForeignKey("staff.id", ondelete="CASCADE"), nullable=False
+    )
+    body: Mapped[str] = mapped_column("Body", Text, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        "CreatedAt", DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        "UpdatedAt",
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # Relationships
+    issue: Mapped["Issue"] = relationship(back_populates="comments")
+    author: Mapped["Staff"] = relationship(back_populates="authored_issue_comments")
+
+    def __repr__(self) -> str:
+        return f"<IssueComment(id={self.id}, issue_id={self.issue_id}, author_id={self.author_id})>"

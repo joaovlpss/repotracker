@@ -40,6 +40,7 @@ repository_collaborators_table = Table(
             ForeignKey("repository.id", ondelete="CASCADE"),
             primary_key=True,
         ),
+        Column("role", Text, nullable=False, default="collaborator"),
     ],
 )
 
@@ -60,6 +61,23 @@ issue_labels_table = Table(
             primary_key=True,
         ),
     ],
+)
+
+issue_assignees_table = Table(
+    "issue_assignees",
+    Base.metadata,
+    Column(
+        "issue_id",
+        Integer,
+        ForeignKey("issues.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "assignee_id",
+        Integer,
+        ForeignKey("staff.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
 
 # -- Main model classes --
@@ -90,3 +108,47 @@ class Staff(Base):
 
     def __repr__(self) -> str:
         return f"<Staff(id={self.id}, name='{self.name}')>"
+
+
+class Repository(Base):
+    __tablename__ = "repository"
+
+    id: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
+    name: Mapped[str] = mapped_column("Name", String, unique=True, nullable=False)
+    creator_id: Mapped[int] = mapped_column(
+        "CreatorID", ForeignKey("staff.id", ondelete="CASCADE"), nullable=False
+    )
+    # Map TIMESTAMPTZ to DateTime(timezone=True)
+    last_commit_date: Mapped[datetime.datetime] = mapped_column(
+        "LastCommitDate",
+        DateTime(timezone=True),
+        nullable=False,
+        # Default handled by trigger in SQL, but good practice to have a Python default too
+        # Or use server_default=text("'1970-01-01 00:00:00+00'") if needed
+        default=datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc),
+    )
+
+    # Relationships
+    # Belongs to one creator (Staff)
+    creator: Mapped["Staff"] = relationship(back_populates="created_repositories")
+
+    # Has many branches, collaborators, milestones, issues, labels
+    branches: Mapped[List["Branch"]] = relationship(
+        back_populates="repo", cascade="all, delete-orphan"
+    )
+    collaborators: Mapped[List["Staff"]] = relationship(
+        secondary=repository_collaborators_table,
+        back_populates="collaborating_repositories",
+    )
+    milestones: Mapped[List["Milestone"]] = relationship(
+        back_populates="repo", cascade="all, delete-orphan"
+    )
+    issues: Mapped[List["Issue"]] = relationship(
+        back_populates="repo", cascade="all, delete-orphan"
+    )
+    labels: Mapped[List["Label"]] = relationship(
+        back_populates="repo", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Repository(id={self.id}, name='{self.name}')>"

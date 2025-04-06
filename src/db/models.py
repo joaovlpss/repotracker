@@ -118,13 +118,10 @@ class Repository(Base):
     creator_id: Mapped[int] = mapped_column(
         "CreatorID", ForeignKey("staff.id", ondelete="CASCADE"), nullable=False
     )
-    # Map TIMESTAMPTZ to DateTime(timezone=True)
     last_commit_date: Mapped[datetime.datetime] = mapped_column(
         "LastCommitDate",
         DateTime(timezone=True),
         nullable=False,
-        # Default handled by trigger in SQL, but good practice to have a Python default too
-        # Or use server_default=text("'1970-01-01 00:00:00+00'") if needed
         default=datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc),
     )
 
@@ -152,3 +149,62 @@ class Repository(Base):
 
     def __repr__(self) -> str:
         return f"<Repository(id={self.id}, name='{self.name}')>"
+
+
+class Branch(Base):
+    __tablename__ = "branch"
+
+    id: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
+    name: Mapped[str] = mapped_column("Name", String, nullable=False)
+    repo_id: Mapped[int] = mapped_column(
+        "RepoID", ForeignKey("repository.id", ondelete="CASCADE"), nullable=False
+    )
+
+    # Relationships
+
+    # Belongs to a repository
+    repo: Mapped["Repository"] = relationship(back_populates="branches")
+
+    # Has many commits
+    commits: Mapped[List["Commit"]] = relationship(
+        back_populates="branch", cascade="all, delete-orphan"
+    )
+
+    # A repo cannot have multiple branches of the same name.
+    __table_args__ = (UniqueConstraint("Name", "RepoID", name="uq_branch_name_repo"),)
+
+    def __repr__(self) -> str:
+        return f"<Branch(id={self.id}, name='{self.name}', repo_id={self.repo_id})>"
+
+
+class Commit(Base):
+    __tablename__ = "commits"  # Note table name difference
+
+    id: Mapped[int] = mapped_column("ID", Integer, primary_key=True)
+    author_id: Mapped[int] = mapped_column(
+        "AuthorID", ForeignKey("staff.id", ondelete="CASCADE"), nullable=False
+    )
+    branch_id: Mapped[int] = mapped_column(
+        "BranchID", ForeignKey("branch.id", ondelete="CASCADE"), nullable=False
+    )
+    comment: Mapped[str] = mapped_column(
+        "Comment", Text, nullable=False
+    )  # Using Text for potentially long messages
+    date: Mapped[datetime.datetime] = mapped_column(
+        "Date", DateTime(timezone=True), nullable=False
+    )
+    file_changes: Mapped[int] = mapped_column("FileChanges", Integer, nullable=False)
+
+    # Relationships
+    author: Mapped["Staff"] = relationship(back_populates="authored_commits")
+    branch: Mapped["Branch"] = relationship(back_populates="commits")
+
+    # A commit may not change a negative amount of files (this should probably never trigger)
+    __table_args__ = (
+        CheckConstraint(
+            '"FileChanges" >= 0', name="check_commit_filechanges_nonnegative"
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Commit(id={self.id}, author_id={self.author_id}, branch_id={self.branch_id}, date='{self.date}')>"

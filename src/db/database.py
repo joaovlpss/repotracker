@@ -55,6 +55,7 @@ if "asyncpg" not in DATABASE_URL:
 
 log.info(f"Database URL for async engine: {DATABASE_URL}")
 
+
 # Create the async engine
 try:
     async_engine = create_async_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
@@ -63,7 +64,7 @@ except Exception as e:
     log.exception(f"Failed to create async SQLAlchemy engine: {e}")
     raise
 
-# --- SQLAlchemy Session Setup ---
+
 # Create an async session factory
 AsyncSessionFactory = async_sessionmaker(
     bind=async_engine,

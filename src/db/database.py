@@ -1,4 +1,4 @@
-import logging
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -16,53 +16,27 @@ except ImportError as e:
     print(
         "Ensure src/repotracker/config.py exists and PYTHONPATH is set correctly if needed."
     )
-
-    # Provide dummy values to allow file to load, but application will fail
-    class DummySettings:
-        DATABASE_URL = "postgresql+asyncpg://user:pass@host:port/db"
-        LOG_LEVEL = "DEBUG"
-
-    settings = DummySettings()
-    print("Warning: Using dummy database settings.")
-
-
-# Logger for database setup
-
-log = logging.getLogger(__name__)
-logging.basicConfig(level=settings.LOG_LEVEL.upper())
+    os._exit(os.EX_CONFIG)
 
 # --- SQLAlchemy Engine Setup ---
 # Use the DATABASE_URL from settings
 # Ensure the URL uses an async driver
-# This is useful for users with their own .env files.
+# This is useful for users with wrong .env files.
 DATABASE_URL = str(settings.database_url)
 if "asyncpg" not in DATABASE_URL:
-    log.warning(
+    print(
         f"DATABASE_URL does not seem to use an async driver (e.g., asyncpg): {DATABASE_URL}"
     )
-    # Attempt to replace standard driver with asyncpg if it's postgresql
-    if DATABASE_URL.startswith("postgresql://"):
-        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
-        log.info(f"Attempted automatic conversion to asyncpg URL: {DATABASE_URL}")
-    elif DATABASE_URL.startswith("postgresql+"):  # Handle other drivers like psycopg2
-        import re
-
-        DATABASE_URL = re.sub(
-            r"postgresql\+\w+://", "postgresql+asyncpg://", DATABASE_URL
-        )
-        log.info(f"Attempted automatic conversion to asyncpg URL: {DATABASE_URL}")
-
-
-log.info(f"Database URL for async engine: {DATABASE_URL}")
+    os._exit(os.EX_CONFIG)
 
 
 # Create the async engine
 try:
     async_engine = create_async_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
-    log.info("Async SQLAlchemy engine created.")
+    print("Async SQLAlchemy engine created.")
 except Exception as e:
-    log.exception(f"Failed to create async SQLAlchemy engine: {e}")
-    raise
+    print(f"Failed to create async SQLAlchemy engine: {e}")
+    os._exit(os.EX_DATAERR)
 
 
 # Create an async session factory
@@ -71,7 +45,7 @@ AsyncSessionFactory = async_sessionmaker(
     expire_on_commit=False,
     class_=AsyncSession,
 )
-log.info("Async SQLAlchemy session factory created.")
+print("Async SQLAlchemy session factory created.")
 
 
 # --- Session Dependency Provider ---
@@ -84,29 +58,29 @@ async def get_db_session() -> AsyncIterator[AsyncSession]:
     Ensures the session is closed and handles transaction rollback on exceptions.
     """
     session = AsyncSessionFactory()
-    log.debug(f"DB Session created: {session}")
+    print(f"DB Session created: {session}")
     try:
         yield session
 
     except Exception as e:
-        log.exception(f"Exception occurred in DB session {session}, rolling back.")
+        print(f"Exception occurred in DB session {session}, rolling back.")
         await session.rollback()
         # Re-raise the exception after rollback
         raise
     finally:
         await session.close()
-        log.debug(f"DB Session closed: {session}")
+        print(f"DB Session closed: {session}")
 
 
 # Simple testing function
 async def test_connection():
-    log.info("Testing database connection...")
+    print("Testing database connection...")
     try:
         async with get_db_session() as session:
             result = await session.execute(text("SELECT 1"))
-            log.info(f"Database connection test successful. Result: {result.scalar()}")
+            print(f"Database connection test successful. Result: {result.scalar()}")
     except Exception as e:
-        log.exception(f"Database connection test failed: {e}")
+        print(f"Database connection test failed: {e}")
 
 
 if __name__ == "__main__":

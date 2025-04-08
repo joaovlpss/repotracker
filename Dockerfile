@@ -16,19 +16,16 @@ RUN pip install uv==${UV_VERSION}
 FROM base as builder
 
 # Copy and build dependencies from pyproject.toml
+RUN uv venv
 COPY pyproject.toml ./
-RUN uv pip install --system --no-cache .[dev]
+RUN uv pip install -r ./pyproject.toml
 
-# Final stage: Copy dependencies and code
-FROM base as final
-
-# Copy dependencies from builder
-COPY --from=builder /usr/local/lib/python*/site-packages/ /usr/local/lib/python*/site-packages/
-COPY --from=builder /usr/local/bin/ /usr/local/bin/
+# Initialize alembic and remove default env.py
+RUN uv run alembic init migrations
+RUN rm ./migrations/env.py
 
 # Copy application code
 COPY ./src ./src
 COPY ./main.py ./main.py
 COPY ./tracked_repos ./tracked_repos
-
-ENTRYPOINT ["python", "main.py"]
+COPY ./migrations/env.py ./migrations/env.py

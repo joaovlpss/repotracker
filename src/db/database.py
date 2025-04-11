@@ -8,12 +8,17 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import declarative_base
+from src.repotracker.logging_config import LogSettings
+
+# Setting up logs
+log_settings = LogSettings("database_connection", "./logs/database_connection_logs.log")
+logger = log_settings.get_logger()
 
 try:
     from src.repotracker.config import settings
 except ImportError as e:
-    print(f"Error importing settings: {e}")
-    print(
+    logger.error(f"Error importing settings: {e}")
+    logger.error(
         "Ensure src/repotracker/config.py exists and PYTHONPATH is set correctly if needed."
     )
     os._exit(os.EX_CONFIG)
@@ -24,7 +29,7 @@ except ImportError as e:
 # This is useful for users with wrong .env files.
 DATABASE_URL = str(settings.database_url)
 if "asyncpg" not in DATABASE_URL:
-    print(
+    logger.error(
         f"DATABASE_URL does not seem to use an async driver (e.g., asyncpg): {DATABASE_URL}"
     )
     os._exit(os.EX_CONFIG)
@@ -33,9 +38,9 @@ if "asyncpg" not in DATABASE_URL:
 # Create the async engine
 try:
     async_engine = create_async_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
-    print("Async SQLAlchemy engine created.")
+    logger.info("Async SQLAlchemy engine created.")
 except Exception as e:
-    print(f"Failed to create async SQLAlchemy engine: {e}")
+    logger.error(f"Failed to create async SQLAlchemy engine: {e}")
     os._exit(os.EX_DATAERR)
 
 
@@ -45,7 +50,7 @@ AsyncSessionFactory = async_sessionmaker(
     expire_on_commit=False,
     class_=AsyncSession,
 )
-print("Async SQLAlchemy session factory created.")
+logger.info("Async SQLAlchemy session factory created.")
 
 
 # --- Session Dependency Provider ---
@@ -58,18 +63,18 @@ async def get_db_session() -> AsyncIterator[AsyncSession]:
     Ensures the session is closed and handles transaction rollback on exceptions.
     """
     session = AsyncSessionFactory()
-    print(f"DB Session created: {session}")
+    logger.info(f"DB Session created: {session}")
     try:
         yield session
 
     except Exception as e:
-        print(f"Exception occurred in DB session {session}, rolling back.")
+        logger.exception(f"Exception occurred in DB session {session}, rolling back.")
         await session.rollback()
         # Re-raise the exception after rollback
         raise
     finally:
         await session.close()
-        print(f"DB Session closed: {session}")
+        logger.info(f"DB Session closed: {session}")
 
 
 # Simple testing function
@@ -78,9 +83,11 @@ async def test_connection():
     try:
         async with get_db_session() as session:
             result = await session.execute(text("SELECT 1"))
-            print(f"Database connection test successful. Result: {result.scalar()}")
+            logger.info(
+                f"Database connection test successful. Result: {result.scalar()}"
+            )
     except Exception as e:
-        print(f"Database connection test failed: {e}")
+        logger.exception(f"Database connection test failed: {e}")
 
 
 if __name__ == "__main__":

@@ -16,11 +16,7 @@ class Settings(BaseSettings):
 
     github_api_token: str | None = Field(None, validation_alias="GITHUB_API_TOKEN")
 
-    log_level: str = Field("INFO", validation_alias="LOG_LEVEL")
-
-    github_api_base_url: AnyHttpUrl = Field(
-        "https://api.github.com", validation_alias="GITHUB_API_BASE_URL"
-    )
+    github_api_base_url: AnyHttpUrl = Field(..., validation_alias="GITHUB_API_BASE_URL")
 
 
 settings = Settings()

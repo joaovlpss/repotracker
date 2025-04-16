@@ -1,4 +1,5 @@
 import os
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -8,11 +9,9 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import declarative_base
-from src.repotracker.logging_config import LogSettings
 
 # Setting up logs
-log_settings = LogSettings("database_connection", "./logs/database_connection_logs.log")
-logger = log_settings.get_logger()
+logger = logging.getLogger("repotracker.db")
 
 try:
     from src.repotracker.config import settings
@@ -79,9 +78,11 @@ async def get_db_session() -> AsyncIterator[AsyncSession]:
 
 # Simple testing function
 async def test_connection():
-    print("Testing database connection...")
+    logger.info("Testing database connection...")
     try:
         async with get_db_session() as session:
+            from sqlalchemy import text
+
             result = await session.execute(text("SELECT 1"))
             logger.info(
                 f"Database connection test successful. Result: {result.scalar()}"
@@ -90,9 +91,12 @@ async def test_connection():
         logger.exception(f"Database connection test failed: {e}")
 
 
+# This is a duct-tape solution for now, it shouldn't be tested like this.
 if __name__ == "__main__":
     import asyncio
-    from sqlalchemy import text  # Import text for raw SQL execution
+    from sqlalchemy import text
+    from src.repotracker.logging_config import setup_logging
 
-    # This is a duct-tape solution for now, it shouldn't be tested like this.
+    setup_logging(log_level=logging.DEBUG)
+
     asyncio.run(test_connection())

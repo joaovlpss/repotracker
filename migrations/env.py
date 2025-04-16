@@ -1,26 +1,24 @@
 import asyncio
 import os
 import sys
+import logging
 
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.engine import URL
 
 from alembic import context
-from src.repotracker.logging_config import LogSettings
 
 # Project pathing setup
+# Making sure the root directory is in path, in order to find project modules.
 project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 src_dir = os.path.join(project_dir, "src")
 
-# Make sure the root directory is in path, in order to find project modules.
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-
-# Setting up logs
-log_settings = LogSettings("alembic_env", "./logs/alembic_logs.log")
-logger = log_settings.get_logger()
+# For CLI-run alembic sessions, this will rely on basicConfig
+logger = logging.getLogger("repotracker.alembic")
 
 # Model Import
 try:
@@ -34,15 +32,21 @@ except ImportError as e:
 
 # Database URL config
 
-db_url_env = os.getenv("DATABASE_URL")
+try:
+    from repotracker.config import settings
 
-if not db_url_env:
-    logger.error(
-        "Failed to retrieve database URL from .env file. Does your .env file have a DATABASE_URL field?"
-    )
-    os._exit(os.EX_CONFIG)
+    # Ensure the URL is a string for create_async_engine
+    db_url = str(settings.database_url)
+    logger.info("Database URL loaded from settings.")
+except ImportError:
+    logger.error("Could not import settings from src.repotracker.config.")
+    logger.error("Ensure .env file is present and PYTHONPATH includes src.")
+    sys.exit(1)
+except Exception as e:
+    logger.error(f"Failed to retrieve database URL from settings: {e}")
+    sys.exit(1)
 
-if "asyncpg" not in db_url_env:
+if "asyncpg" not in db_url:
     logger.warning(
         "Warning: Alembic database URL might not be using the 'asyncpg' driver."
     )
@@ -59,7 +63,7 @@ def run_migrations_offline() -> None:
     Calls to context.execute() here emit the given string to the script output.
     """
 
-    url = db_url_env
+    url = db_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -87,7 +91,7 @@ async def run_migrations_online() -> None:
     """
     # Create async engine using the URL from config
     connectable = create_async_engine(
-        db_url_env,
+        db_url,
         poolclass=pool.NullPool,
     )
 

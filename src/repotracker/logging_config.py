@@ -1,37 +1,63 @@
 import logging
 import logging.config
+import os
 import pathlib
 
-from pydantic import BaseModel
+LOGS_DIR = pathlib.Path("./logs")
 
 
-class LogSettings(BaseModel):
-    logger: logging.Logger
-    flair: str
-    logfile: pathlib.Path
+def setup_logging(log_level=logging.INFO):
+    """
+    Configures logging for the application.
 
-    # Each logger will have a flair (to annotate where it's coming from) and a file
-    def __init__(self, logflair: str, logfile: pathlib.Path):
-        logging_conf = {
-            "version": 1,
-            "disable_existing_loggers": False,
-            "formatters": {
-                "simple": {"format": "%(name)s - %(levelname)s: %(message)s"}
+    Sets up a file handler for the main application logger.
+    Should be called once at application startup.
+    """
+    # Ensure the logs directory exists
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+    log_config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "detailed": {
+                "format": "%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s"
             },
-            "handlers": {
-                # Our only handler should output to the specified file.
-                "log_files": {
-                    "class": "logging.FileHandler",
-                    "formatter": "simple",
-                    "filename": f"{logfile}",
-                }
+            "simple": {"format": "%(name)s - %(levelname)s: %(message)s"},
+        },
+        "handlers": {
+            "file": {
+                "class": "logging.FileHandler",
+                "filename": LOGS_DIR / "repotracker_app.log",
+                "formatter": "detailed",
+                "encoding": "utf-8",
             },
-            "loggers": {"root": {"level": "DEBUG", "handlers": ["log_files"]}},
-        }
+            "console": {
+                # Added console logger for visibility in Docker
+                "class": "logging.StreamHandler",
+                "formatter": "simple",
+                "level": log_level,
+                "stream": "ext://sys.stdout",
+            },
+        },
+        # Configure the 'repotracker' logger
+        "loggers": {
+            "repotracker": {
+                "level": log_level,
+                # Use console for Docker output, file for persistent logs
+                "handlers": ["file", "console"],
+                # Don't send logs to root logger
+                "propagate": False,
+            }
+        },
+    }
 
-        logging.config.dictConfig(config=logging_conf)
-
-        self.logger = logging.getLogger(f"{logflair}")
-
-    def get_logger(self):
-        return self.logger
+    try:
+        logging.config.dictConfig(log_config)
+        logger = logging.getLogger("repotracker")
+        logger.info("Logging configured successfully.")
+    except Exception as e:
+        # Use basicConfig temporarily if dictConfig fails
+        logging.basicConfig(level=logging.ERROR)
+        logging.exception("Failed to configure logging using dictConfig", exc_info=e)
+        os._exit(1)

@@ -20,12 +20,8 @@ RUN uv venv
 COPY pyproject.toml ./
 RUN uv pip install -r ./pyproject.toml
 
-# Initialize alembic and remove default env.py
-RUN uv run alembic init migrations
-RUN rm ./migrations/env.py
-
-# Copy application code
+# Copy application code and migration files
 COPY ./src ./src
 COPY ./main.py ./main.py
 COPY ./tracked_repos ./tracked_repos
-COPY ./migrations/env.py ./migrations/env.py
+COPY ./migrations ./migrations

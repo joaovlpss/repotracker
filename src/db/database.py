@@ -31,7 +31,6 @@ if "asyncpg" not in DATABASE_URL:
     logger.error(
         f"DATABASE_URL does not seem to use an async driver (e.g., asyncpg): {DATABASE_URL}"
     )
-    os._exit(os.EX_CONFIG)
 
 
 # Create the async engine

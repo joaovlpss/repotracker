@@ -14,6 +14,8 @@ class Settings(BaseSettings):
 
     database_url: PostgresDsn = Field(..., validation_alias="DATABASE_URL")
 
+    test_database_url: PostgresDsn = Field(..., validate_alias="TEST_DATABASE_URL")
+
     github_api_token: str | None = Field(None, validation_alias="GITHUB_API_TOKEN")
 
     github_api_base_url: AnyHttpUrl = Field(..., validation_alias="GITHUB_API_BASE_URL")
